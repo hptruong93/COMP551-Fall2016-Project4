@@ -2,7 +2,8 @@ import csv
 import datetime
 import math
 
-import draw_map
+import numpy as np
+from nltk.cluster.kmeans import KMeansClusterer
 
 cols =['event-id',
         'visible',
@@ -63,6 +64,11 @@ def globe_distance(origin, destination):
 def parse_time(data):
     return datetime.datetime.strptime('{}000'.format(data), TIME_FORMAT)
 
+def date_of_year(date):
+    return int(date.strftime('%j'))
+
+base_date = parse_time(base_time)
+
 def parse_row(row):
     row[2] = parse_time(row[2]) # Parse time
 
@@ -82,9 +88,46 @@ if __name__ == "__main__":
             row = parse_row(row)
             data.append(row)
 
-    print data[0]
+    # Find max
+    # maxes = {}
+    # for row in data:
+    #     name = row[-1]
+    #     value = row[0]
 
+    #     if name not in maxes or maxes[name][0] < value:
+    #         maxes[name] = row
+
+    # data = [row for k, row in maxes.iteritems()]
+
+    # print data[0]
+
+    import draw_map
+    import random
     longs = [row[1] for row in data]
     lats = [row[2] for row in data]
+    z = np.array([date_of_year(row[0]) for row in data])
+    # z = z / float(366)
 
-    draw_map.plot(lats, longs)
+    draw_map.plot(lats, longs, z, save = False)
+
+    # print "There are {} data points".format(len(data))
+    # # data = data[:200]
+    # data = np.array([(row[1], row[2]) for row in data])
+
+    # results = []
+    # for cluster_count in xrange(10, 100, 1):
+    #     kclusterer = KMeansClusterer(cluster_count, distance=globe_distance, avoid_empty_clusters = True, repeats=5)
+    #     assigned_clusters = kclusterer.cluster(data, assign_clusters=True)
+
+    #     means = kclusterer.means()
+
+    #     print "Count = {} and means are {}".format(cluster_count, means)
+
+    #     error = sum([globe_distance(means[point], data[i]) for i, point in enumerate(assigned_clusters)])
+    #     results.append((cluster_count, error))
+
+    # with open('kmean_result.csv', 'w') as f:
+    #     writer = csv.writer(f, delimiter = ',')
+
+    #     for row in results:
+    #         writer.writerow(row)

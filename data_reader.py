@@ -51,14 +51,14 @@ def globe_distance(origin, destination):
     lat1, lon1 = origin
     lat2, lon2 = destination
     radius = 6371 # km
-
+    #
     dlat = math.radians(lat2-lat1)
     dlon = math.radians(lon2-lon1)
     a = math.sin(dlat/2) * math.sin(dlat/2) + math.cos(math.radians(lat1)) \
         * math.cos(math.radians(lat2)) * math.sin(dlon/2) * math.sin(dlon/2)
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
     d = radius * c
-
+    #
     return d
 
 def parse_time(data):
@@ -71,22 +71,62 @@ base_date = parse_time(base_time)
 
 def parse_row(row):
     row[2] = parse_time(row[2]) # Parse time
-
+    #
     row[3] = float(row[3]) # Longitude
     row[4] = float(row[4]) # Latitude
-
+    #
     return (row[2], row[3], row[4], row[-2])
 
-if __name__ == "__main__":
-    data = []
+def get_birds():
+	data = []
+	#
+	with open('data.csv', 'r') as f:
+	    reader = csv.reader(f, delimiter = ',')
+	    for index, row in enumerate(reader):
+	        if index == 0:
+	            continue
+	        row = parse_row(row)
+	        data.append(row)
+	birds = []
+	bird = {}
+	bird['id']=''
+	bird['events'] = []
+	for d in data:
+		if d[3]!= bird['id']:
+			birds.append(bird)
+			bird = {}
+			bird['id'] = d[3]
+			bird['events'] = []
+		bird['events'].append(d)
+	birds.append(bird)
+	del birds[0]
+	return birds
 
-    with open('data.csv', 'r') as f:
-        reader = csv.reader(f, delimiter = ',')
-        for index, row in enumerate(reader):
-            if index == 0:
-                continue
-            row = parse_row(row)
-            data.append(row)
+def plot_bird(bird):
+	import matplotlib as mpl
+	from mpl_toolkits.mplot3d import Axes3D
+	import numpy as np
+	import matplotlib.pyplot as plt
+	mpl.rcParams['legend.fontsize'] = 10
+	fig = plt.figure()
+	ax = fig.gca(projection='3d')
+	e = bird['events'][0]
+	z = [(event[0]-e[0]).days for event in bird['events']]
+	x = [event[1] for event in bird['events']]
+	y = [event[2] for event in bird['events']]
+	ax.plot(x, y, z,'o-')
+	plt.show()
+
+if __name__ == "__main__":
+	data = []
+	#
+	with open('data.csv', 'r') as f:
+	    reader = csv.reader(f, delimiter = ',')
+	    for index, row in enumerate(reader):
+	        if index == 0:
+	            continue
+	        row = parse_row(row)
+	        data.append(row)
 
     # Find max
     # maxes = {}

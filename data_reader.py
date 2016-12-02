@@ -107,10 +107,10 @@ def get_birds():
     bird['id']=''
     bird['events'] = []
     for d in data:
-        if d[3]!= bird['id']:
+        if d[4]!= bird['id']:
             birds.append(bird)
             bird = {}
-            bird['id'] = d[3]
+            bird['id'] = d[4]
             bird['events'] = []
         bird['events'].append(d)
     birds.append(bird)
@@ -126,9 +126,9 @@ def plot_bird(bird):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     e = bird['events'][0]
-    z = [(event[0]-e[0]).days for event in bird['events']]
-    x = [event[1] for event in bird['events']]
-    y = [event[2] for event in bird['events']]
+    z = [(event[1]-e[1]).days for event in bird['events']]
+    x = [event[2] for event in bird['events']]
+    y = [event[3] for event in bird['events']]
     ax.plot(x, y, z,'o-')
     plt.show()
 

@@ -1,6 +1,7 @@
 import csv
 import datetime
 import math
+import random
 
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
@@ -133,40 +134,44 @@ def plot_bird(bird):
     ax.plot(x, y, z,'o-')
     plt.show()
 
+def load_raw_data(find_max = False):
+	data = []
+
+    with open('data.csv', 'r') as f:
+        reader = csv.reader(f, delimiter = ',')
+        for index, row in enumerate(reader):
+            if index == 0:
+                continue
+            row = parse_row(row)
+            data.append(row)
+
+    if find_max:
+	    # Find max
+	    maxes = {}
+	    for row in data:
+	        name = row[-1]
+	        value = row[0]
+
+	        if name not in maxes or maxes[name][0] < value:
+	            maxes[name] = row
+
+	    data = [row for k, row in maxes.iteritems()]
+
+	return data
+
+def draw_globe_from_raw_data():
+    import draw_map
+    longs = [row[1] for row in data]
+    lats = [row[2] for row in data]
+    z = np.array([date_of_year(row[0]) for row in data])
+
+    draw_map.plot(lats, longs, z, save = False)
+
 if __name__ == "__main__":
 	birds = get_birds()
 	plot_bird(birds[1])
 
-    # data = []
-    # #
-    # with open('data.csv', 'r') as f:
-    #     reader = csv.reader(f, delimiter = ',')
-    #     for index, row in enumerate(reader):
-    #         if index == 0:
-    #             continue
-    #         row = parse_row(row)
-    #         data.append(row)
-
-    # Find max
-    # maxes = {}
-    # for row in data:
-    #     name = row[-1]
-    #     value = row[0]
-
-    #     if name not in maxes or maxes[name][0] < value:
-    #         maxes[name] = row
-
-    # data = [row for k, row in maxes.iteritems()]
-
     # print data[0]
-
-    # import draw_map
-    # import random
-    # longs = [row[1] for row in data]
-    # lats = [row[2] for row in data]
-    # z = np.array([date_of_year(row[0]) for row in data])
-
-    # draw_map.plot(lats, longs, z, save = False)
 
     # print "There are {} data points".format(len(data))
     # # data = data[:200]

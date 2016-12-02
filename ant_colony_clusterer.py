@@ -27,9 +27,11 @@ class Ant:
 
 
 
-def cluster_ant_colonies(X, num_ants, iterations, vel, output_freq, nghSize, fileName, alpha, s, k1, k2, slowdown):
+def cluster_ant_colonies(num_ants, iterations, vel, output_freq, nghSize, fileName, alpha, s, k1, k2, slowdown, cutoff):
     #X is a list of tuples as the features [longitude, latidude]
     #can have more, but only first two are used for clustering
+
+    X = plot_clusterer.parse(cutoff)
 
     grain = 10
 
@@ -104,10 +106,11 @@ def cluster_ant_colonies(X, num_ants, iterations, vel, output_freq, nghSize, fil
 
         if (i % output_freq == 0):
             #print(max_long, max_latd, min_long, min_latd)
-            file = fileName + "000_" + str(file_index)
+            file = fileName + "_000_" + str(file_index)
             plot_clusterer.grid_plot(grid, file, max_long, max_latd)
             #print("Finished iteration " + str(i))
             file_index += 1
+    print("Finished a param set.")
 
 
 def P_drop(datapoint, grid, ant, nghSize, long_range, latd_range, alpha, s, k2):
@@ -165,24 +168,26 @@ if __name__ == "__main__":
 
     #X = [[0,1],[1,0],[0,0],[1,1]]
     numAnts = 100
-    vels = [1000,100,10] #starting vec, dyn slows
-    nghSizes = [50,100] #starting size, dyn shrinks
-    iterations = 5000000
-    data_cutoff = [1000, 10000,0]
+    vels = [10,100,1000] #starting vec, dyn slows
+    nghSizes = [20, 50,100] #starting size, dyn shrinks
+    iterations = 100000
+    data_cutoff = [1000, 10000]
     alpha, k1, k2 = .5, .1, .15 #recommended params
     #k1 is essentially pickup chance, k2 drop chance
     s = 0 #curr unused
     slowdowns = [5,10,15]
-    cutoffs = [1000, 100000, 0]
+    cutoffs = [1000, 100000]
+
+    pool = mp.Pool(mp.cpu_count())
+    argz = []
 
     for l in range(len(cutoffs)):
         for j in range(len(vels)):
             for k in range(len(nghSizes)):
                 for i in range(len(slowdowns)):
                     fileName = "_cutoff" + str(cutoffs[l]) + "_vel" + str(vels[j]) + "_nghSize" + str(nghSizes[k]) + "_slowdown" + str(slowdowns[i])
-                    X = plot_clusterer.parse(cutoffs[l])
-                    #print("Finished parsing.")
-                    cluster_ant_colonies(X, numAnts, iterations, vels[j], int(iterations/5), nghSizes[k], fileName, alpha, s, k1, k2, slowdowns[i])
-                    #(X, num_ants, iterations, vel, output_freq, nghSize)
-                    print("Finished ant clustering with param #s " + str(l) + ", " + str(j) + ", " + str(k) + "," + str(i))
+                    #paramSet = mp.Process(target=cluster_ant_colonies, args=(numAnts, iterations, vels[j], int(iterations/5), nghSizes[k], fileName, alpha, s, k1, k2, slowdowns[i], cutoffs[l]))
+                    args = [numAnts, iterations, vels[j], int(iterations / 100), nghSizes[k], fileName, alpha, s, k1, k2, slowdowns[i], cutoffs[l]]
+                    argz.append(args)
+    pool.starmap(cluster_ant_colonies, argz)
     print("Done.")

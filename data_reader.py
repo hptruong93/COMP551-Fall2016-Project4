@@ -11,37 +11,37 @@ import matplotlib.pyplot as plt
 import numpy as np
 from nltk.cluster.kmeans import KMeansClusterer
 
-cols =['event-id',
-        'visible',
-        'timestamp',
-        'location-long',
-        'location-lat',
-        'algorithm-marked-outlier',
-        'argos:altitude',
-        'argos:best-level',
-        'argos:calcul-freq',
-        'argos:iq',
-        'argos:lat1',
-        'argos:lat2',
-        'argos:lc',
-        'argos:lon1',
-        'argos:lon2',
-        'argos:nb-mes',
-        'argos:nb-mes-120',
-        'argos:nopc',
-        'argos:pass-duration',
-        'argos:sensor-1',
-        'argos:sensor-2',
-        'argos:sensor-3',
-        'argos:sensor-4',
-        'argos:valid-location-manual',
-        'manually-marked-outlier',
-        'manually-marked-valid',
-        'sensor-type',
-        'individual-taxon-canonical-name',
-        'tag-local-identifier',
-        'individual-local-identifier',
-        'study-name']
+cols_raw =[ 'event-id',
+            'visible',
+            'timestamp',
+            'location-long',
+            'location-lat',
+            'algorithm-marked-outlier',
+            'argos:altitude',
+            'argos:best-level',
+            'argos:calcul-freq',
+            'argos:iq',
+            'argos:lat1',
+            'argos:lat2',
+            'argos:lc',
+            'argos:lon1',
+            'argos:lon2',
+            'argos:nb-mes',
+            'argos:nb-mes-120',
+            'argos:nopc',
+            'argos:pass-duration',
+            'argos:sensor-1',
+            'argos:sensor-2',
+            'argos:sensor-3',
+            'argos:sensor-4',
+            'argos:valid-location-manual',
+            'manually-marked-outlier',
+            'manually-marked-valid',
+            'sensor-type',
+            'individual-taxon-canonical-name',
+            'tag-local-identifier',
+            'individual-local-identifier',
+            'study-name']
 
 base_time = '2000-06-26 00:22:57.000'
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
@@ -67,6 +67,44 @@ def globe_distance(origin, destination):
     #
     return d
 
+def average_positions(longs, lats):
+    assert len(longs) == len(lats)
+    n = len(lats)
+
+    sum_x = 0
+    sum_y = 0
+    sum_z = 0
+
+    longs = [math.radians(l) for l in longs]
+    longs = [(math.sin(l), math.cos(l)) for l in longs]
+
+    lats = [math.radians(l) for l in lats]
+    lats = [(math.sin(l), math.cos(l)) for l in lats]
+
+    # x += Math.Cos(latitude) * Math.Cos(longitude);
+    # y += Math.Cos(latitude) * Math.Sin(longitude);
+    # z += Math.Sin(latitude);
+
+    sum_x = sum([lats[i][1] * longs[i][1] for i in xrange(n)])
+    sum_y = sum([lats[i][1] * longs[i][0] for i in xrange(n)])
+    sum_z = sum([lats[i][0] for i in xrange(n)])
+
+    # x = x / total;
+    # y = y / total;
+    # z = z / total;
+
+    sum_x /= n
+    sum_y /= n
+    sum_z /= n
+
+    # var centralLongitude = Math.Atan2(y, x);
+    # var centralSquareRoot = Math.Sqrt(x * x + y * y);
+    # var centralLatitude = Math.Atan2(z, centralSquareRoot);
+
+    result = math.atan2(sum_y, sum_x), math.atan2(sum_z, math.sqrt(sum_x**2 + sum_y**2))
+    return math.degrees(result[0]), math.degrees(result[1])
+
+
 def parse_time(data):
     return datetime.datetime.strptime('{}000'.format(data), TIME_FORMAT)
 
@@ -85,13 +123,13 @@ def parse_row(row):
 
 def parse_row_ENV(row):
     row[1] = parse_time(row[1]) # Parse time
-    #
+
     row[2] = float(row[2]) # Longitude
     row[3] = float(row[3]) # Latitude
     for i,r in enumerate(row):
         if i>2 and not i==4:
             row[i] = float(r)
-    #
+
     return row
 
 
@@ -134,8 +172,20 @@ def plot_bird(bird):
     ax.plot(x, y, z,'o-')
     plt.show()
 
+def simple_x_y_plot(xs, ys, zs = None):
+    mpl.rcParams['legend.fontsize'] = 10
+    fig = plt.figure()
+    ax = fig.gca()
+
+    if zs:
+        ax.plot(xs, ys, zs,'o-')
+    else:
+        ax.plot(xs, ys, 'o-')
+
+    plt.show()
+
 def load_raw_data(find_max = False):
-	data = []
+    data = []
 
     with open('data.csv', 'r') as f:
         reader = csv.reader(f, delimiter = ',')
@@ -146,20 +196,20 @@ def load_raw_data(find_max = False):
             data.append(row)
 
     if find_max:
-	    # Find max
-	    maxes = {}
-	    for row in data:
-	        name = row[-1]
-	        value = row[0]
+        # Find max
+        maxes = {}
+        for row in data:
+            name = row[-1]
+            value = row[0]
 
-	        if name not in maxes or maxes[name][0] < value:
-	            maxes[name] = row
+            if name not in maxes or maxes[name][0] < value:
+                maxes[name] = row
 
-	    data = [row for k, row in maxes.iteritems()]
+        data = [row for k, row in maxes.iteritems()]
 
-	return data
+    return data
 
-def draw_globe_from_raw_data():
+def draw_globe_from_raw_data(data):
     import draw_map
     longs = [row[1] for row in data]
     lats = [row[2] for row in data]
@@ -168,10 +218,26 @@ def draw_globe_from_raw_data():
     draw_map.plot(lats, longs, z, save = False)
 
 if __name__ == "__main__":
-	birds = get_birds()
-	plot_bird(birds[1])
+    # birds = get_birds()
+    # plot_bird(birds[1])
+    # events = birds[0]['events']
 
-    # print data[0]
+    # months = {}
+    # for event in events[:]:
+    #     date = event[1]
+    #     month = date.month
+    #     if month not in months:
+    #         months[month] = []
+
+    #     months[month].append(event)
+
+    # for month, value in months.iteritems():
+    #     print month, len(value)
+
+    longs = [0.0, 0.0]
+    lats = [0.0, 90.0]
+    
+    print average_positions(longs, lats)
 
     # print "There are {} data points".format(len(data))
     # # data = data[:200]

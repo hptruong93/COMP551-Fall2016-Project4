@@ -2,6 +2,11 @@ import csv
 import datetime
 import math
 
+import matplotlib as mpl
+from mpl_toolkits.mplot3d import Axes3D
+import numpy as np
+import matplotlib.pyplot as plt
+
 import numpy as np
 from nltk.cluster.kmeans import KMeansClusterer
 
@@ -118,10 +123,6 @@ def get_birds():
     return birds
 
 def plot_bird(bird):
-    import matplotlib as mpl
-    from mpl_toolkits.mplot3d import Axes3D
-    import numpy as np
-    import matplotlib.pyplot as plt
     mpl.rcParams['legend.fontsize'] = 10
     fig = plt.figure()
     ax = fig.gca(projection='3d')
@@ -133,15 +134,18 @@ def plot_bird(bird):
     plt.show()
 
 if __name__ == "__main__":
-    data = []
-    #
-    with open('data.csv', 'r') as f:
-        reader = csv.reader(f, delimiter = ',')
-        for index, row in enumerate(reader):
-            if index == 0:
-                continue
-            row = parse_row(row)
-            data.append(row)
+	birds = get_birds()
+	plot_bird(birds[1])
+
+    # data = []
+    # #
+    # with open('data.csv', 'r') as f:
+    #     reader = csv.reader(f, delimiter = ',')
+    #     for index, row in enumerate(reader):
+    #         if index == 0:
+    #             continue
+    #         row = parse_row(row)
+    #         data.append(row)
 
     # Find max
     # maxes = {}
@@ -156,13 +160,13 @@ if __name__ == "__main__":
 
     # print data[0]
 
-    import draw_map
-    import random
-    longs = [row[1] for row in data]
-    lats = [row[2] for row in data]
-    z = np.array([date_of_year(row[0]) for row in data])
+    # import draw_map
+    # import random
+    # longs = [row[1] for row in data]
+    # lats = [row[2] for row in data]
+    # z = np.array([date_of_year(row[0]) for row in data])
 
-    draw_map.plot(lats, longs, z, save = False)
+    # draw_map.plot(lats, longs, z, save = False)
 
     # print "There are {} data points".format(len(data))
     # # data = data[:200]

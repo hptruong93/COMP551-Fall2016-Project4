@@ -121,6 +121,38 @@ def parse_row(row):
     #
     return (row[2], row[3], row[4], row[-2])
 
+def events_in_month(events):
+    m = events[0][1].month
+    es_in_m = []
+    for i in range(0,12):
+        es_in_m.append((m,[event for event in events if event[1].month==m]))
+        m += 1
+        if m > 12:
+            m = 1
+    return es_in_m
+
+def average(events):
+    es_in_m = events_in_month(events)
+    new_events = []
+    for e_in_m in es_in_m:
+        if e_in_m[1] == []:
+            continue
+        event_base = list(e_in_m[1][0])
+        for i,v in enumerate(event_base):
+            if i > 4:
+                values = [event[i] for event in e_in_m[1]]
+                event_base[i] = sum(values) / float(len(values))
+        longs = [event[2] for event in e_in_m[1]]
+        lats = [event[3] for event in e_in_m[1]]
+        av_long, av_lat = average_positions(longs, lats)
+        event_base[2] = av_long
+        event_base[3] = av_lat
+        new_events.append(event_base)
+    return new_events
+        
+
+
+
 def parse_row_ENV(row):
     row[1] = parse_time(row[1]) # Parse time
 
@@ -161,13 +193,20 @@ def get_birds():
     del birds[0]
     return birds
 
+def find_bird(birds):
+    for i, bird in enumerate(birds):
+        tm = max([event[2] for event in bird['events']])
+        if tm > 0:
+            return i
+    return -1
+
 def plot_bird(bird):
     mpl.rcParams['legend.fontsize'] = 10
     fig = plt.figure()
     ax = fig.gca(projection='3d')
     e = bird['events'][0]
     z = [(event[1]-e[1]).days for event in bird['events']]
-    x = [event[2] for event in bird['events']]
+    x = [event[2] if event[2] <= 0 else event[2] - 360 for event in bird['events']]
     y = [event[3] for event in bird['events']]
     ax.plot(x, y, z,'o-')
     plt.show()

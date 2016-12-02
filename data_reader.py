@@ -151,6 +151,9 @@ def average(events):
     return new_events
         
 
+def average_birds(birds):
+    for bird in birds:
+        bird['events'] = average(bird['events'])
 
 
 def parse_row_ENV(row):
@@ -210,6 +213,7 @@ def plot_bird(bird):
     y = [event[3] for event in bird['events']]
     ax.plot(x, y, z,'o-')
     plt.show()
+
 
 def simple_x_y_plot(xs, ys, zs = None):
     mpl.rcParams['legend.fontsize'] = 10

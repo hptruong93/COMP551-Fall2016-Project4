@@ -106,7 +106,6 @@ if __name__ == "__main__":
     longs = [row[1] for row in data]
     lats = [row[2] for row in data]
     z = np.array([date_of_year(row[0]) for row in data])
-    # z = z / float(366)
 
     draw_map.plot(lats, longs, z, save = False)
 
@@ -115,8 +114,8 @@ if __name__ == "__main__":
     # data = np.array([(row[1], row[2]) for row in data])
 
     # results = []
-    # for cluster_count in xrange(10, 100, 1):
-    #     kclusterer = KMeansClusterer(cluster_count, distance=globe_distance, avoid_empty_clusters = True, repeats=5)
+    # for cluster_count in xrange(10, 50, 1):
+    #     kclusterer = KMeansClusterer(cluster_count, distance=globe_distance, avoid_empty_clusters = True, repeats=10)
     #     assigned_clusters = kclusterer.cluster(data, assign_clusters=True)
 
     #     means = kclusterer.means()

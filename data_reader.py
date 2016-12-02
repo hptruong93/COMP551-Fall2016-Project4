@@ -77,56 +77,71 @@ def parse_row(row):
     #
     return (row[2], row[3], row[4], row[-2])
 
+def parse_row_ENV(row):
+    row[1] = parse_time(row[1]) # Parse time
+    #
+    row[2] = float(row[2]) # Longitude
+    row[3] = float(row[3]) # Latitude
+    for i,r in enumerate(row):
+        if i>2 and not i==4:
+            row[i] = float(r)
+    #
+    return row
+
+
+def load_data_with_ENV():
+    data = []
+    with open('data_with_ENV.csv', 'r') as f:
+        reader = csv.reader(f, delimiter = ',')
+        for index, row in enumerate(reader):
+            if index == 0:
+                continue
+            row = parse_row_ENV(row)
+            data.append(row)
+    return data
+
 def get_birds():
-	data = []
-	#
-	with open('data.csv', 'r') as f:
-	    reader = csv.reader(f, delimiter = ',')
-	    for index, row in enumerate(reader):
-	        if index == 0:
-	            continue
-	        row = parse_row(row)
-	        data.append(row)
-	birds = []
-	bird = {}
-	bird['id']=''
-	bird['events'] = []
-	for d in data:
-		if d[3]!= bird['id']:
-			birds.append(bird)
-			bird = {}
-			bird['id'] = d[3]
-			bird['events'] = []
-		bird['events'].append(d)
-	birds.append(bird)
-	del birds[0]
-	return birds
+    data = load_data_with_ENV()
+    birds = []
+    bird = {}
+    bird['id']=''
+    bird['events'] = []
+    for d in data:
+        if d[3]!= bird['id']:
+            birds.append(bird)
+            bird = {}
+            bird['id'] = d[3]
+            bird['events'] = []
+        bird['events'].append(d)
+    birds.append(bird)
+    del birds[0]
+    return birds
 
 def plot_bird(bird):
-	import matplotlib as mpl
-	from mpl_toolkits.mplot3d import Axes3D
-	import numpy as np
-	import matplotlib.pyplot as plt
-	mpl.rcParams['legend.fontsize'] = 10
-	fig = plt.figure()
-	ax = fig.gca(projection='3d')
-	e = bird['events'][0]
-	z = [(event[0]-e[0]).days for event in bird['events']]
-	x = [event[1] for event in bird['events']]
-	y = [event[2] for event in bird['events']]
-	ax.plot(x, y, z,'o-')
-	plt.show()
+    import matplotlib as mpl
+    from mpl_toolkits.mplot3d import Axes3D
+    import numpy as np
+    import matplotlib.pyplot as plt
+    mpl.rcParams['legend.fontsize'] = 10
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+    e = bird['events'][0]
+    z = [(event[0]-e[0]).days for event in bird['events']]
+    x = [event[1] for event in bird['events']]
+    y = [event[2] for event in bird['events']]
+    ax.plot(x, y, z,'o-')
+    plt.show()
 
 if __name__ == "__main__":
-	data = []
-	#
-	with open('data.csv', 'r') as f:
-	    reader = csv.reader(f, delimiter = ',')
-	    for index, row in enumerate(reader):
-	        if index == 0:
-	            continue
-	        row = parse_row(row)
-	        data.append(row)
+    data = []
+    #
+    with open('data.csv', 'r') as f:
+        reader = csv.reader(f, delimiter = ',')
+        for index, row in enumerate(reader):
+            if index == 0:
+                continue
+            row = parse_row(row)
+            data.append(row)
 
     # Find max
     # maxes = {}

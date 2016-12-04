@@ -285,15 +285,9 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', dest = 'task', default = 0, help = 'Choose which task to run', type = int)
     args = parser.parse_args()
 
-    if args.task == 0:
-        birds = get_birds()
-        plot_bird(birds[28])
-        # events = birds[0]['events']
-
-    if args.task == 1:
-        with open('kmean/kmean_detailed_results.pickle', 'r') as f:
-            detailed_results = pickle.load(f)
-            means = detailed_results[11][1]
+    if args.task == 3:
+        import metadata
+        metadata.print_metadata('data/aggregated_data.csv')
 
     if args.task == 2:
         all_data = []
@@ -322,15 +316,24 @@ if __name__ == "__main__":
                     else:
                         continue
 
-        with open('aggregated_data.csv', 'w') as f:
+        with open('data/aggregated_data.csv', 'w') as f:
             writer = csv.writer(f, delimiter = ',')
             writer.writerow(all_cols)
-
             writer.writerows(all_data)
 
 
         print len(all_cols)
         print len(all_data)
+
+    if args.task == 1:
+        with open('kmean/kmean_detailed_results.pickle', 'r') as f:
+            detailed_results = pickle.load(f)
+            means = detailed_results[11][1]
+
+    if args.task == 0:
+        birds = get_birds()
+        plot_bird(birds[28])
+        # events = birds[0]['events']
 
 
 

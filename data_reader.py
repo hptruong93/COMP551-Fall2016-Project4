@@ -105,6 +105,9 @@ def average_positions(longs, lats):
     return math.degrees(result[0]), math.degrees(result[1])
 
 def to_3d_representation(longs, lats):
+    longs = math.radians(longs)
+    lats = math.radians(lats)
+
     long_coses = np.cos(longs)
     lat_coses = np.cos(lats)
     long_sines = np.sin(longs)
@@ -166,7 +169,7 @@ def average(events):
         event_base[3] = av_lat
         new_events.append(event_base)
     return new_events
-        
+
 
 def average_birds(birds):
     for bird in birds:
@@ -279,14 +282,16 @@ def draw_globe_from_raw_data(data):
     draw_map.plot(lats, longs, z, save = False)
 
 if __name__ == "__main__":
+    print to_long_lat(*to_3d_representation(5, 10))
+
     # birds = get_birds()
     # plot_bird(birds[1])
     # events = birds[0]['events']
 
-    data = load_raw_data()
-    longs = [row[1] if row[1] < 0 else row[1] - 360 for row in data]
-    lats = [row[2] for row in data]
-    simple_x_y_plot(longs, lats, title = 'Total')
+    # data = load_raw_data()
+    # longs = [row[1] if row[1] < 0 else row[1] - 360 for row in data]
+    # lats = [row[2] for row in data]
+    # simple_x_y_plot(longs, lats, title = 'Total')
 
     # months = {}
     # for event in events[:]:

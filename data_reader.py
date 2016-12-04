@@ -190,7 +190,7 @@ def parse_row_ENV(row):
 
 def load_data_with_ENV():
     data = []
-    with open('data_with_ENV.csv', 'r') as f:
+    with open('data/data_with_ENV.csv', 'r') as f:
         reader = csv.reader(f, delimiter = ',')
         for index, row in enumerate(reader):
             if index == 0:
@@ -224,15 +224,13 @@ def find_bird(birds):
     return -1
 
 def plot_bird(bird):
-    mpl.rcParams['legend.fontsize'] = 10
-    fig = plt.figure()
-    ax = fig.gca(projection='3d')
+    import draw_map
     e = bird['events'][0]
     z = [(event[1]-e[1]).days for event in bird['events']]
-    x = [event[2] if event[2] <= 0 else event[2] - 360 for event in bird['events']]
+    x = [event[2] for event in bird['events']]
     y = [event[3] for event in bird['events']]
-    ax.plot(x, y, z,'o-')
-    plt.show()
+
+    draw_map.plot(y, x, z, title = 'Position of a single bird')
 
 
 def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):
@@ -251,7 +249,7 @@ def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):
 def load_raw_data(find_max = False):
     data = []
 
-    with open('data.csv', 'r') as f:
+    with open('data/data.csv', 'r') as f:
         reader = csv.reader(f, delimiter = ',')
         for index, row in enumerate(reader):
             if index == 0:
@@ -282,16 +280,9 @@ def draw_globe_from_raw_data(data):
     draw_map.plot(lats, longs, z, save = False)
 
 if __name__ == "__main__":
-    print to_long_lat(*to_3d_representation(5, 10))
-
-    # birds = get_birds()
-    # plot_bird(birds[1])
+    birds = get_birds()
+    plot_bird(birds[1])
     # events = birds[0]['events']
-
-    # data = load_raw_data()
-    # longs = [row[1] if row[1] < 0 else row[1] - 360 for row in data]
-    # lats = [row[2] for row in data]
-    # simple_x_y_plot(longs, lats, title = 'Total')
 
     # months = {}
     # for event in events[:]:
@@ -304,25 +295,3 @@ if __name__ == "__main__":
 
     # for month, value in months.iteritems():
     #     print month, len(value)
-
-    # print "There are {} data points".format(len(data))
-    # # data = data[:200]
-    # data = np.array([(row[1], row[2]) for row in data])
-
-    # results = []
-    # for cluster_count in xrange(10, 50, 1):
-    #     kclusterer = KMeansClusterer(cluster_count, distance=globe_distance, avoid_empty_clusters = True, repeats=10)
-    #     assigned_clusters = kclusterer.cluster(data, assign_clusters=True)
-
-    #     means = kclusterer.means()
-
-    #     print "Count = {} and means are {}".format(cluster_count, means)
-
-    #     error = sum([globe_distance(means[point], data[i]) for i, point in enumerate(assigned_clusters)])
-    #     results.append((cluster_count, error))
-
-    # with open('kmean_result.csv', 'w') as f:
-    #     writer = csv.writer(f, delimiter = ',')
-
-    #     for row in results:
-    #         writer.writerow(row)

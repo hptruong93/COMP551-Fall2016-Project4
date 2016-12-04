@@ -104,6 +104,23 @@ def average_positions(longs, lats):
     result = math.atan2(sum_y, sum_x), math.atan2(sum_z, math.sqrt(sum_x**2 + sum_y**2))
     return math.degrees(result[0]), math.degrees(result[1])
 
+def to_3d_representation(longs, lats):
+    long_coses = np.cos(longs)
+    lat_coses = np.cos(lats)
+    long_sines = np.sin(longs)
+    lat_sines = np.sin(lats)
+
+    x = lat_coses * long_coses
+    y = lat_coses * long_sines
+    z = lat_sines
+
+    return (x, y, z)
+
+def to_long_lat(x, y, z):
+    longitude = math.atan2(y, x)
+    latitude = math.atan2(z, math.sqrt(x**2 + y**2))
+
+    return math.degrees(longitude), math.degrees(latitude)
 
 def parse_time(data):
     return datetime.datetime.strptime('{}000'.format(data), TIME_FORMAT)
@@ -215,7 +232,7 @@ def plot_bird(bird):
     plt.show()
 
 
-def simple_x_y_plot(xs, ys, zs = None):
+def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):
     mpl.rcParams['legend.fontsize'] = 10
     fig = plt.figure()
     ax = fig.gca()
@@ -225,6 +242,7 @@ def simple_x_y_plot(xs, ys, zs = None):
     else:
         ax.plot(xs, ys, 'o-')
 
+    plt.title(title)
     plt.show()
 
 def load_raw_data(find_max = False):
@@ -265,6 +283,11 @@ if __name__ == "__main__":
     # plot_bird(birds[1])
     # events = birds[0]['events']
 
+    data = load_raw_data()
+    longs = [row[1] if row[1] < 0 else row[1] - 360 for row in data]
+    lats = [row[2] for row in data]
+    simple_x_y_plot(longs, lats, title = 'Total')
+
     # months = {}
     # for event in events[:]:
     #     date = event[1]
@@ -276,11 +299,6 @@ if __name__ == "__main__":
 
     # for month, value in months.iteritems():
     #     print month, len(value)
-
-    longs = [0.0, 0.0]
-    lats = [0.0, 90.0]
-    
-    print average_positions(longs, lats)
 
     # print "There are {} data points".format(len(data))
     # # data = data[:200]

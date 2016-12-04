@@ -8,6 +8,7 @@ class RNNTheano_modified:
     
     def __init__(self, input_dim, hidden_dim=100, bptt_truncate=4):
         # Assign instance variables
+        self.learning_rate = 0.005
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
         self.bptt_truncate = bptt_truncate

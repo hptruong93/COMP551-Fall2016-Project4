@@ -126,14 +126,14 @@ def find_bird(birds):
             return i
     return -1
 
-def plot_bird(bird):
+def plot_bird(bird, save_fig = False):
     import draw_map
     e = bird['events'][0]
     z = [(event[1]-e[1]).days for event in bird['events']]
     x = [event[2] for event in bird['events']]
     y = [event[3] for event in bird['events']]
 
-    draw_map.plot(y, x, z, title = 'Position of a single bird')
+    draw_map.plot(y, x, z, save = save_fig, title = 'Position of a single bird')
 
 
 def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):
@@ -189,8 +189,7 @@ def load_aggregate_data():
 
         # Have to parse before remove otherwise lost track of the indices
         data = generic_parse_row(data, metadata.metadata_aggregated)
-        data = filter_irrelevant_data(data, metadata.metadata_aggregated, cols_aggregate)
-    return data
+        return filter_irrelevant_data(data, metadata.metadata_aggregated, cols_aggregate)
 
 def generic_parse_row(data, the_metadata):
     # Parse data based on metadata
@@ -215,44 +214,149 @@ def filter_irrelevant_data(data, the_metadata, col_titles):
 
     for index, col_metadata in enumerate(the_metadata):
         # Remove too few occurrences
-        if col_metadata[0] < 100:
-            print "Removing %s due to occurrence = %s" % (col_titles[index], col_metadata[0])
+        if col_metadata[0] < 50:
+            # print "Removing %s due to occurrence = %s" % (col_titles[index], col_metadata[0])
             removing_indices.add(index)
 
         # Remove nan
         if col_metadata[6] > 0:
-            print "Removing %s due to nan" % col_titles[index]
+            # print "Removing %s due to nan" % col_titles[index]
             removing_indices.add(index)
 
+    # Manual filtering
+    removing_indices.add(0)  # ID
+    removing_indices.add(10) # Repeated long
+    removing_indices.add(13) # Repeated lat
+    removing_indices.add(22) # argos:sensor-4
+    removing_indices.add(28) # Identifier
+
     # Now proceed to remove columns
-    removing_indices = sorted(removing_indices, reverse = True) # Remove the last index first to preserve index for next removal if need be
-    for index in removing_indices:
+    # Remove the last index first to preserve index for next removal if need be
+    for index in sorted(removing_indices, reverse = True):
         for row in data:
             del row[index]
 
     print "Reduced from %s columns to %s columns. Removed %s columns." % (len(col_titles), len(data[0]), len(col_titles) - len(data[0]))
-    return data
+    
+    new_titles = [title for i, title in enumerate(col_titles) if i not in removing_indices]
+    new_metadata = [old_metadata for i, old_metadata in enumerate(the_metadata) if i not in removing_indices]
 
+    return data, new_metadata, new_titles
+
+def transform_data(data, the_metadata, col_titles):
+    """
+        Calculate new features from current set of features. Losing metadata in the process since we do not do any analysis.
+    """
+
+    new_titles = col_titles[:]
+
+    # First calculate month since beginning and month
+    replacing_index = col_titles.index('timestamp')
+
+    del new_titles[replacing_index]
+    new_titles.insert(replacing_index, 'Month since beginning')
+    new_titles.insert(replacing_index, 'Month')
+
+    # Secondly convert long lat to x y z
+    long_index = new_titles.index('location-long')
+    del new_titles[2]
+    del new_titles[2]
+
+    new_titles.insert(2, 'Z')
+    new_titles.insert(2, 'Y')
+    new_titles.insert(2, 'X')
+
+
+    for row in data:
+        current_date = row[replacing_index]
+        month = current_date.month
+        month_since_beginning = (current_date.year - base_date.year)*12 + current_date.month - base_date.month
+
+        del row[replacing_index]
+        row.insert(replacing_index, month_since_beginning)
+        row.insert(replacing_index, month)
+
+        x, y, z = geo.to_3d_representation(row[2], row[3])
+        del row[2]
+        del row[2]
+
+        row.insert(2, z)
+        row.insert(2, y)
+        row.insert(2, x)
+
+    # Make identifier to be readable
+    identifier_index = new_titles.index('individual-local-identifier')
+    for row in data:
+        to_replace = int(row[identifier_index].replace('-', ''))
+        row[identifier_index] = to_replace
+
+    all_ids = sorted(list(set(row[identifier_index] for row in data)))
+    for row in data:
+        row[identifier_index] = all_ids.index(row[identifier_index])
+
+    return data, new_titles
 
 
 def normalize(data, cols):
-    #uniform normlzn btwn 0,1
-    npdata = np.array(data)
-    if (cols == -1): cols = len(data[0])
+    # If cols = -1 then do all cols
+    #uniform normlzn btwn 0,1: x = (x - min)/ (max - min)
+    if (cols == -1): cols = xrange(len(data[0]))
 
-    #print("normlzg input shape: " + str(np.shape(data)))
-    
-    for i in cols
-        if (!(isinstance(data[0][i], int, float, long))):
-            print("ERROR in normalize(): col " + str(i) " is not a number.")
-            break 
+    temp = [[row[col] for col in cols] for row in data]
+    npdata = np.array(temp, dtype = float)
+
+    for i in xrange(len(cols)):
         min = np.min(npdata[:,i])
         max = np.max(npdata[:,i])
         for j in range(len(data)):
             if (max-min != 0):
                 #print(max,min)
-                npdata[j][i] = (float(data[j][i]) - min) / float(max-min)
+                npdata[j][i] = (npdata[j][i] - min) / float(max-min)
     return npdata
+
+def group_by_time_period(data, col_titles):
+    """
+        For now group by month
+    """
+    current_individual = 0
+    current_month = 0
+
+    id_index = col_titles.index('individual-local-identifier')
+    month_index = col_titles.index('Month')
+
+    untouched_columns = ['individual-local-identifier']
+    untouched_column_indices = [col_titles.index(col) for col in untouched_columns]
+
+    all_rows = []
+    output = []
+
+    for row in data:
+        individual_id = row[id_index]
+        month = row[month_index]
+
+        if month == current_month and individual_id == current_individual:
+            all_rows.append(row)
+        else:
+            if len(all_rows) != 0:
+                new_row = []
+
+                # Now do average for each column
+                for column_index in xrange(len(col_titles)):
+                    if column_index in untouched_column_indices:
+                        new_row.append(all_rows[0][column_index]) # Use the first value
+                        continue
+
+                    avg = np.average([row_of_month[column_index] for row_of_month in all_rows])
+                    new_row.append(avg)
+
+                output.append(new_row)
+
+            all_rows = [row]
+
+            current_month = month
+            current_individual = individual_id
+
+    return output
 
 
 if __name__ == "__main__":
@@ -260,12 +364,28 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', dest = 'task', default = 0, help = 'Choose which task to run', type = int)
     args = parser.parse_args()
 
-    if args.task == 5: # Plot clusters
-        #import draw_map
-        data = load_aggregate_data()
-        data = normalize(data, [2,6])
-        print(data)
-  
+    
+    if args.task == 6: # Group by month
+        data, new_metadata, new_titles = load_aggregate_data()
+        data, new_titles = transform_data(data, new_metadata, new_titles)
+
+        data = group_by_time_period(data, new_titles)
+
+        # Write to file
+        with open('data/test.csv', 'w') as f:
+            writer = csv.writer(f, delimiter = ',')
+            writer.writerow(new_titles)
+            writer.writerows(data)
+
+    if args.task == 5: # Convert from aggregated to filter data: all floats
+        data, new_metadata, new_titles = load_aggregate_data()
+        data, new_titles = transform_data(data, new_metadata, new_titles)
+
+        # Write to file
+        with open('data/filtered_data.csv', 'w') as f:
+            writer = csv.writer(f, delimiter = ',')
+            writer.writerow(new_titles)
+            writer.writerows(data)
 
     if args.task == 4: # Cluster long lat into cluster for each point
         from kmean import kmean_utils
@@ -307,7 +427,6 @@ if __name__ == "__main__":
 
                 all_data[index].append(row[col_index])
 
-
         cols = [cols_raw, cols_env, cols_human]
         for findex, name in enumerate(['data.csv', 'data_with_ENV.csv', 'data_with_human_ENV.csv']):
             with open('data/%s' % name, 'r') as f:
@@ -340,18 +459,3 @@ if __name__ == "__main__":
         birds = get_birds()
         plot_bird(birds[28])
         # events = birds[0]['events']
-
-
-
-
-    # months = {}
-    # for event in events[:]:
-    #     date = event[1]
-    #     month = date.month
-    #     if month not in months:
-    #         months[month] = []
-
-    #     months[month].append(event)
-
-    # for month, value in months.iteritems():
-    #     print month, len(value)

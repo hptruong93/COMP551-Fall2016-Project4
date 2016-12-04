@@ -132,8 +132,39 @@ def plot_bird(bird, save_fig = False):
     z = [(event[1]-e[1]).days for event in bird['events']]
     x = [event[2] for event in bird['events']]
     y = [event[3] for event in bird['events']]
+<<<<<<< HEAD
 
     draw_map.plot(y, x, z, save = save_fig, title = 'Position of a single bird')
+=======
+    draw_map.plot(y, x, z, title = 'Position of a single bird')
+>>>>>>> ff8a31d27b5691def29a89910e1b4a42c9a2f652
+
+def old_plot_bird(bird):
+   import matplotlib as mpl
+   from mpl_toolkits.mplot3d import Axes3D
+   import numpy as np
+   import matplotlib.pyplot as plt
+   mpl.rcParams['legend.fontsize'] = 10
+   fig = plt.figure()
+   ax = fig.gca(projection='3d')
+   e = bird['events'][0]
+   z = [(event[0]-e[0]).days for event in bird['events']]
+   x = [event[1] for event in bird['events']]
+   y = [event[2] for event in bird['events']]
+   ax.plot(x, y, z,'o-')
+   plt.show()
+
+def to_cluster(event):
+    longitude = event[2]
+    latitude = event[3]
+    from kmean import kmean_utils
+    # Load means
+    with open('kmean/kmean_detailed_results.pickle', 'r') as f:
+        detailed_results = pickle.load(f)
+        chosen_cluster_count = 11
+        means = detailed_results[chosen_cluster_count][1]
+    mean_index, d = kmean_utils.closest_mean(longitude, latitude, means)
+    return mean_index
 
 
 def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):

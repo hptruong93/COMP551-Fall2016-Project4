@@ -1,3 +1,6 @@
+import math
+import numpy as np
+
 def globe_distance(origin, destination):
     """
         Return distance in km.

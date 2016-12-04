@@ -11,114 +11,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import numpy as np
+import metadata
 from utils import geo
 
-cols_raw =[
-'event-id',
-'visible',
-'timestamp',
-'location-long',
-'location-lat',
-'algorithm-marked-outlier',
-'argos:altitude',
-'argos:best-level',
-'argos:calcul-freq',
-'argos:iq',
-'argos:lat1',
-'argos:lat2',
-'argos:lc',
-'argos:lon1',
-'argos:lon2',
-'argos:nb-mes',
-'argos:nb-mes-120',
-'argos:nopc',
-'argos:pass-duration',
-'argos:sensor-1',
-'argos:sensor-2',
-'argos:sensor-3',
-'argos:sensor-4',
-'argos:valid-location-manual',
-'manually-marked-outlier',
-'manually-marked-valid',
-'sensor-type',
-'individual-taxon-canonical-name',
-'tag-local-identifier',
-'individual-local-identifier',
-'study-name',
-]
+cols_raw = metadata.get_cols('data/data.csv')
+cols_env = metadata.get_cols('data/data_with_ENV.csv')
+cols_human = metadata.get_cols('data/data_with_human_ENV.csv')
 
-
-cols_env = [
-'event-id',
-'timestamp',
-'location-long',
-'location-lat',
-'individual-local-identifier',
-'ECMWF Interim Full Daily SFC-FC Evaporation',
-'ECMWF Interim Full Daily SFC Temperature (2 m above Ground)',
-'ECMWF Interim Full Daily SFC-FC Sunshine Duration',
-'NCEP NARR SFC Visibility at Surface',
-'ECMWF Interim Full Daily SFC Charnock Parameter',
-'ECMWF Interim Full Daily PL V Velocity',
-'ECMWF Interim Full Daily PL U Velocity',
-'ECMWF Interim Full Daily SFC Total Cloud Cover',
-'ECMWF Interim Full Daily SFC Surface Air Pressure',
-'ECMWF Interim Full Daily SFC Total Atmospheric Water',
-'ECMWF Interim Full Daily SFC Snow Temperature',
-'NASA Distance to Coast (Signed)',
-'GlobCover 2009 2009 Land-Cover Classification',
-'ECMWF Interim Full Daily SFC-FC Runoff',
-'ECMWF Interim Full Daily SFC Ice Temperature at 0-7 cm',
-'ECMWF Interim Full Daily SFC Soil Temperature at 1-7 cm',
-'NCEP NARR SFC Snow Cover at Surface',
-'ECMWF Interim Full Daily SFC Volumetric Soil Water Content at 1-7 cm'
-]
-
-cols_human = [
-'event-id','visible',
-'timestamp',
-'location-long',
-'location-lat',
-'algorithm-marked-outlier',
-'argos:altitude',
-'argos:best-level',
-'argos:calcul-freq',
-'argos:iq',
-'argos:lat1',
-'argos:lat2',
-'argos:lc',
-'argos:lon1',
-'argos:lon2',
-'argos:nb-mes',
-'argos:nb-mes-120',
-'argos:nopc',
-'argos:pass-duration',
-'argos:sensor-1',
-'argos:sensor-2',
-'argos:sensor-3',
-'argos:sensor-4',
-'argos:valid-location-manual',
-'manually-marked-outlier',
-'manually-marked-valid',
-'sensor-type',
-'individual-taxon-canonical-name',
-'tag-local-identifier',
-'individual-local-identifier',
-'study-name',
-'ECMWF Interim Full Daily SFC-FC Evaporation',
-'ECMWF Interim Full Daily SFC Temperature (2 m above Ground)',
-'ECMWF Interim Full Daily SFC-FC Sunshine Duration',
-'NCEP NARR SFC Visibility at Surface',
-'ECMWF Interim Full Daily SFC Charnock Parameter',
-'NCEP NARR 3D Cloud Water',
-'ECMWF Interim Full Daily SFC Sea Ice Cover',
-'ECMWF Interim Full Daily PL V Velocity',
-'ECMWF Interim Full Daily PL U Velocity',
-'ECMWF Interim Full Daily SFC Total Cloud Cover',
-'SEDAC GRUMP v1 2000 Population Density Adjusted',
-'ECMWF Interim Full Daily SFC Surface Air Pressure',
-'ECMWF Interim Full Daily SFC Total Atmospheric Water'
-]
+cols_aggregate = metadata.get_cols('data/aggregated_data.csv')
 
 base_time = '2000-06-26 00:22:57.000'
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S.%f'
@@ -280,16 +180,106 @@ def draw_globe_from_raw_data(data):
 
     draw_map.plot(lats, longs, z, save = False)
 
+def load_aggregate_data():
+    with open('data/aggregated_data.csv', 'r') as f:
+        reader = csv.reader(f, delimiter = ',')
+        data = [row for row in reader][1:]
+
+        # Have to parse before remove otherwise lost track of the indices
+        data = generic_parse_row(data, metadata.metadata_aggregated)
+        data = filter_irrelevant_data(data, metadata.metadata_aggregated, cols_aggregate)
+
+def generic_parse_row(data, the_metadata):
+    # Parse data based on metadata
+
+    for row_index, row in enumerate(data):
+        for index, col_metadata in enumerate(the_metadata):
+            data_type = col_metadata[1]
+
+            if data_type in [int, float]:
+                try:
+                    row[index] = data_type(row[index])
+                except:
+                    print "Unable to parse row %s of column %s. Value is %s" % (row_index, index, row[index])
+            elif data_type is datetime.datetime:
+                row[index] = parse_time(row[index])
+
+    return data
+
+
+def filter_irrelevant_data(data, the_metadata, col_titles):
+    removing_indices = set()
+
+    for index, col_metadata in enumerate(the_metadata):
+        # Remove too few occurrences
+        if col_metadata[0] < 100:
+            print "Removing %s due to occurrence = %s" % (col_titles[index], col_metadata[0])
+            removing_indices.add(index)
+
+        # Remove nan
+        if col_metadata[6] > 0:
+            print "Removing %s due to nan" % col_titles[index]
+            removing_indices.add(index)
+
+    # Now proceed to remove columns
+    removing_indices = sorted(removing_indices, reverse = True) # Remove the last index first to preserve index for next removal if need be
+    for index in removing_indices:
+        for row in data:
+            del row[index]
+
+    print "Reduced from %s columns to %s columns. Removed %s columns." % (len(col_titles), len(data[0]), len(col_titles) - len(data[0]))
+    return data
+
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Kmean')
     parser.add_argument('-t', '--task', dest = 'task', default = 0, help = 'Choose which task to run', type = int)
     args = parser.parse_args()
 
-    if args.task == 3:
-        import metadata
+    if args.task == 5: # Plot clusters
+        import draw_map
+        data = load_raw_data()
+        with open('data/y_11.csv', 'r') as f:
+            reader = csv.reader(f, delimiter = ',')
+            ys = [row[1] for row in reader]
+
+        longs = [row[1] for row in data]
+        lats = [row[2] for row in data]
+        ys = [int(y) * 10 for y in ys]
+
+        draw_map.plot(lats, longs, ys, discrete_z = True, title = 'Cluter visualization', z_title = 'Cluster')
+
+
+    if args.task == 4: # Cluster long lat into cluster for each point
+        from kmean import kmean_utils
+        from collections import Counter
+        data = load_raw_data()
+
+        # Load means
+        with open('kmean/kmean_detailed_results.pickle', 'r') as f:
+            detailed_results = pickle.load(f)
+            chosen_cluster_count = 11
+
+            means = detailed_results[chosen_cluster_count][1]
+
+        ys = []
+        for row_index, row in enumerate(data):
+            longitude, latitude = row[1], row[2]
+            mean_index, d = kmean_utils.closest_mean(longitude, latitude, means)
+
+            ys.append((row_index, mean_index))
+
+        print Counter([y[1] for y in ys])
+        with open('data/y_%s.csv' % chosen_cluster_count, 'w')  as f:
+            writer = csv.writer(f, delimiter = ',')
+            writer.writerows(ys)
+
+
+    if args.task == 3: # Test of printing metadata
         metadata.print_metadata('data/aggregated_data.csv')
 
-    if args.task == 2:
+    if args.task == 2: # Aggregate the data from different csv
         all_data = []
         all_cols = []
 
@@ -307,7 +297,7 @@ if __name__ == "__main__":
             with open('data/%s' % name, 'r') as f:
                 reader = csv.reader(f, delimiter = ',')
 
-                loaded = [row for row in reader]
+                loaded = [row for row in reader][1:] # Remember to remove headers
                 for index, col_title in enumerate(cols[findex]):
                     if col_title not in all_cols:
                         all_cols.append(col_title)
@@ -325,7 +315,7 @@ if __name__ == "__main__":
         print len(all_cols)
         print len(all_data)
 
-    if args.task == 1:
+    if args.task == 1: # Loading means from kmean result
         with open('kmean/kmean_detailed_results.pickle', 'r') as f:
             detailed_results = pickle.load(f)
             means = detailed_results[11][1]

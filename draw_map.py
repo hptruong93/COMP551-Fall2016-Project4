@@ -1,9 +1,10 @@
 # Import matplotlib and Basemap
+import matplotlib
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import Basemap
 import numpy as np
 
-def plot(lats, longs, z = None, save = False, title = 'Eagle\'s positions over the year'):
+def plot(lats, longs, z = None, discrete_z = False, save = False, title = 'Eagle\'s positions over the year', z_title = 'Date of year'):
     """
         Example from http://chrisalbon.com/python/matplotlib_plot_points_on_map.html
     """
@@ -52,8 +53,27 @@ def plot(lats, longs, z = None, save = False, title = 'Eagle\'s positions over t
         the_map.plot(x, y, 'ro', markersize=6)
     else:
         scatter = the_map.scatter(x, y, c = z)
-        color_bar = the_map.colorbar(scatter, location = 'bottom', pad = '5%')
-        color_bar.set_label('Date of year')
+
+        if discrete_z:
+            # define the colormap
+            cmap = plt.cm.jet
+            # extract all colors from the .jet map
+            cmaplist = [cmap(i) for i in range(cmap.N)]
+            # force the first color entry to be grey
+            cmaplist[0] = (.5,.5,.5,1.0)
+            # create the new map
+            cmap = cmap.from_list('Custom cmap', cmaplist, cmap.N)
+
+            # define the bins and normalize
+            z_count = len(set(z))
+            bounds = np.linspace(0,z_count,z_count + 1)
+            norm = matplotlib.colors.BoundaryNorm(bounds, cmap.N)
+
+            color_bar = the_map.colorbar(scatter, location = 'bottom', pad = '5%', cmap=cmap, spacing='proportional', ticks=bounds, boundaries=bounds, format='%1i')
+        else:
+            color_bar = the_map.colorbar(scatter, location = 'bottom', pad = '5%')
+
+        color_bar.set_label(z_title)
 
     plt.title(title)
 

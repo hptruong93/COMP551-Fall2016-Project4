@@ -1,3 +1,5 @@
+#!/usr/bin/python2
+
 import argparse
 import csv
 import datetime
@@ -188,6 +190,7 @@ def load_aggregate_data():
         # Have to parse before remove otherwise lost track of the indices
         data = generic_parse_row(data, metadata.metadata_aggregated)
         data = filter_irrelevant_data(data, metadata.metadata_aggregated, cols_aggregate)
+    return data
 
 def generic_parse_row(data, the_metadata):
     # Parse data based on metadata
@@ -232,24 +235,37 @@ def filter_irrelevant_data(data, the_metadata, col_titles):
 
 
 
+def normalize(data, cols):
+    #uniform normlzn btwn 0,1
+    npdata = np.array(data)
+    if (cols == -1): cols = len(data[0])
+
+    #print("normlzg input shape: " + str(np.shape(data)))
+    
+    for i in cols
+        if (!(isinstance(data[0][i], int, float, long))):
+            print("ERROR in normalize(): col " + str(i) " is not a number.")
+            break 
+        min = np.min(npdata[:,i])
+        max = np.max(npdata[:,i])
+        for j in range(len(data)):
+            if (max-min != 0):
+                #print(max,min)
+                npdata[j][i] = (float(data[j][i]) - min) / float(max-min)
+    return npdata
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Kmean')
     parser.add_argument('-t', '--task', dest = 'task', default = 0, help = 'Choose which task to run', type = int)
     args = parser.parse_args()
 
     if args.task == 5: # Plot clusters
-        import draw_map
-        data = load_raw_data()
-        with open('data/y_11.csv', 'r') as f:
-            reader = csv.reader(f, delimiter = ',')
-            ys = [row[1] for row in reader]
-
-        longs = [row[1] for row in data]
-        lats = [row[2] for row in data]
-        ys = [int(y) * 10 for y in ys]
-
-        draw_map.plot(lats, longs, ys, discrete_z = True, title = 'Cluter visualization', z_title = 'Cluster')
-
+        #import draw_map
+        data = load_aggregate_data()
+        data = normalize(data, [2,6])
+        print(data)
+  
 
     if args.task == 4: # Cluster long lat into cluster for each point
         from kmean import kmean_utils

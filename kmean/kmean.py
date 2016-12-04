@@ -1,9 +1,11 @@
 import argparse
 import csv
-import matplotlib.pyplot as plt
-import data_reader
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
+
+import imp
+data_reader = imp.load_source('data_reader', '../data_reader.py')
 
 from sklearn.cluster import KMeans
 

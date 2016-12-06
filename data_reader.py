@@ -6,6 +6,8 @@ import datetime
 import math
 import random
 import pickle
+from collections import Counter
+
 
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
@@ -132,12 +134,8 @@ def plot_bird(bird, save_fig = False):
     z = [(event[1]-e[1]).days for event in bird['events']]
     x = [event[2] for event in bird['events']]
     y = [event[3] for event in bird['events']]
-<<<<<<< HEAD
 
     draw_map.plot(y, x, z, save = save_fig, title = 'Position of a single bird')
-=======
-    draw_map.plot(y, x, z, title = 'Position of a single bird')
->>>>>>> ff8a31d27b5691def29a89910e1b4a42c9a2f652
 
 def old_plot_bird(bird):
    import matplotlib as mpl
@@ -285,7 +283,7 @@ def transform_data(data, the_metadata, col_titles):
     replacing_index = col_titles.index('timestamp')
 
     del new_titles[replacing_index]
-    new_titles.insert(replacing_index, 'Month since beginning')
+    new_titles.insert(replacing_index, 'Week since beginning')
     new_titles.insert(replacing_index, 'Month')
 
     # Secondly convert long lat to x y z
@@ -301,10 +299,11 @@ def transform_data(data, the_metadata, col_titles):
     for row in data:
         current_date = row[replacing_index]
         month = current_date.month
-        month_since_beginning = (current_date.year - base_date.year)*12 + current_date.month - base_date.month
+        # month_since_beginning = (current_date.year - base_date.year) * 12 + current_date.month - base_date.month
+        weeks_since_beginning = (current_date - base_date).days / 7
 
         del row[replacing_index]
-        row.insert(replacing_index, month_since_beginning)
+        row.insert(replacing_index, weeks_since_beginning)
         row.insert(replacing_index, month)
 
         x, y, z = geo.to_3d_representation(row[2], row[3])
@@ -345,28 +344,34 @@ def normalize(data, cols):
                 npdata[j][i] = (npdata[j][i] - min) / float(max-min)
     return npdata
 
-def group_by_time_period(data, col_titles):
+def group_by_time_period(data, col_titles, y = None):
     """
-        For now group by month
+        For now group by column Week since beginning
     """
     current_individual = 0
     current_month = 0
 
     id_index = col_titles.index('individual-local-identifier')
-    month_index = col_titles.index('Month')
+    month_index = col_titles.index('Week since beginning')
 
     untouched_columns = ['individual-local-identifier']
     untouched_column_indices = [col_titles.index(col) for col in untouched_columns]
 
     all_rows = []
-    output = []
+    all_ys = []
 
-    for row in data:
+    output = []
+    output_y = []
+
+    for row_index, row in enumerate(data):
         individual_id = row[id_index]
         month = row[month_index]
 
         if month == current_month and individual_id == current_individual:
             all_rows.append(row)
+
+            if y is not None:
+                all_ys.append(y[row_index])
         else:
             if len(all_rows) != 0:
                 new_row = []
@@ -382,13 +387,26 @@ def group_by_time_period(data, col_titles):
 
                 output.append(new_row)
 
+                # Major vote for y
+                if y is not None:
+                    counter = Counter(all_ys) # To count major vote
+                    output_y.append(counter.most_common(1)[0][0]) # Get the value only. Don't care about frequency.
+
             all_rows = [row]
+            if y is not None:
+                all_ys = [y[row_index]]
 
             current_month = month
             current_individual = individual_id
 
-    return output
+    return output, output_y
 
+
+def load_y(file_name = 'data/y_11.csv'):
+    with open(file_name, 'r') as f:
+        reader = csv.reader(f, delimiter = ',')
+        data = [int(row[1]) for row in reader] # Column 0 is the index, which we don't care
+        return data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Kmean')
@@ -396,14 +414,45 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     
-    if args.task == 6: # Group by month
+    if args.task == 7: # Serializing and thing
         data, new_metadata, new_titles = load_aggregate_data()
         data, new_titles = transform_data(data, new_metadata, new_titles)
 
-        data = group_by_time_period(data, new_titles)
+        y = load_y('data/y_11.csv')
+
+        data, y = group_by_time_period(data, new_titles, y)
+        data = np.array(data)
+        y_data = np.array(y)
+
+        group_by_feature_index = new_titles.index('Week since beginning')
+
+        max_group_by_feature_value = int(np.max(data[:, group_by_feature_index]))
+
+        import serialize
+        serialized_data = serialize.serialize(data, y_data, new_titles.index('individual-local-identifier'), group_by_feature_index, max_group_by_feature_value)
+        X, y = serialize.flatten_chunk(serialized_data)
+
+        from sklearn import linear_model, svm
+        from sklearn.ensemble import RandomForestClassifier
+        from sklearn.cross_validation import cross_val_score
+
+
+        models = [linear_model.LinearRegression(), linear_model.Lasso(alpha=0.1), linear_model.Ridge(alpha = 1.0, max_iter = None, tol = 0.001),
+                    svm.SVC(kernel = 'linear'), svm.SVC(kernel = 'rbf'),
+                    RandomForestClassifier(n_estimators = 20, n_jobs = -1)]
+
+        for model in models:
+            scores = cross_val_score(model, X, y, cv = 10, n_jobs = 6)
+            print type(model), np.average(scores)
+
+    if args.task == 6: # Group by
+        data, new_metadata, new_titles = load_aggregate_data()
+        data, new_titles = transform_data(data, new_metadata, new_titles)
+
+        data, _ = group_by_time_period(data, new_titles)
 
         # Write to file
-        with open('data/test.csv', 'w') as f:
+        with open('data/test1.csv', 'w') as f:
             writer = csv.writer(f, delimiter = ',')
             writer.writerow(new_titles)
             writer.writerows(data)
@@ -420,7 +469,6 @@ if __name__ == "__main__":
 
     if args.task == 4: # Cluster long lat into cluster for each point
         from kmean import kmean_utils
-        from collections import Counter
         data = load_raw_data()
 
         # Load means

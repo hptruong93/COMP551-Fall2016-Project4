@@ -1,11 +1,9 @@
 import numpy as np
-from sklearn import datasets
 from sklearn import linear_model
 
 # model = linear_model.LinearRegression()
 # model = linear_model.Ridge(alpha = 1.0, max_iter = None, tol = 0.001)
 model = linear_model.Lasso(alpha=0.1)
-
 
 if __name__ == "__main__":
     X = [[1,2],[3,4],[5,6]]

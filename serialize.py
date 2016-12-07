@@ -14,7 +14,7 @@ class Month_Chunk:
 
 def serialize(dataX, dataY, ID_col, month_col, max_month):
     #organizes data into object oriented series
-    #max_month should be max(year*12 + month) 
+    #max_month should be max(year*12 + month)
 
     #sort.dataX(dataX[ID_col])
     birds = []
@@ -34,18 +34,25 @@ def serialize(dataX, dataY, ID_col, month_col, max_month):
 
     return birds
 
-def flatten_chunk(birds, time_period = 3):
+def flatten_chunk(birds, titles, time_period = 3):
     """
         Return tuple of X and y
     """
     output_x = []
     y = []
 
+    x_index = titles.index('X')
+    y_index = titles.index('Y')
+    z_index = titles.index('Z')
+
     for bird in birds:
         for i in xrange(len(bird.chunks) - (time_period + 1)):
             try:
                 new_row = np.hstack([bird.chunks[i + j].x for j in xrange(time_period)])
                 y.append(bird.chunks[i + (time_period + 1)].y)
+                # y.append((bird.chunks[i + (time_period + 1)].x[x_index],
+                #             bird.chunks[i + (time_period + 1)].x[y_index],
+                #             bird.chunks[i + (time_period + 1)].x[z_index]))
 
                 output_x.append(new_row)
             except:
@@ -54,6 +61,8 @@ def flatten_chunk(birds, time_period = 3):
 
     X =  np.vstack(output_x)
     y = np.array(y)
+
+    print "Flattened into {} and {}".format(X.shape, y.shape)
 
     return X, y
     # for i, c in enumerate(birds[15].chunks):

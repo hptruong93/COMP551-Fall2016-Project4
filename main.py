@@ -14,36 +14,44 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', dest = 'task', default = 0, help = 'Choose which task to run', type = int)
     args = parser.parse_args()
 
-
     if args.task == 7: # Serializing and thing
-        data, new_metadata, new_titles = load_aggregate_data()
-        data, new_titles = transform_data(data, new_metadata, new_titles)
-
-        y = load_y('data/y_11.csv')
-
-        data, y = group_by_time_period(data, new_titles, y)
-        data = np.array(data)
-        y_data = np.array(y)
-
-        group_by_feature_index = new_titles.index('Week since beginning')
-
-        max_group_by_feature_value = int(np.max(data[:, group_by_feature_index]))
-
-        import serialize
-        serialized_data = serialize.serialize(data, y_data, new_titles.index('individual-local-identifier'), group_by_feature_index, max_group_by_feature_value)
-        X, y = serialize.flatten_chunk(serialized_data)
+        X, y, titles = load_and_preprocess('data/y_11.csv')
+        print "Identified {} data samples.".format(X.shape)
 
         from sklearn import linear_model, svm
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.cross_validation import cross_val_score
 
+        # model = linear_model.Lasso(alpha=0.1)
+        # model.fit(X, y)
+        # print "Scores are {}".format(model.score(X, y))
 
-        models = [linear_model.LinearRegression(), linear_model.Lasso(alpha=0.1), linear_model.Ridge(alpha = 1.0, max_iter = None, tol = 0.001),
-                    svm.SVC(kernel = 'linear'), svm.SVC(kernel = 'rbf'),
-                    RandomForestClassifier(n_estimators = 20, n_jobs = -1)]
+        # c = model.coef_
+        # irr = []
+
+        # for row_index, row in enumerate(c):
+        #     print "Starting with cluster {}".format(row_index)
+
+        #     for col_index, val in enumerate(row):
+        #         if abs(val) < 1:
+        #             irr.append(titles[col_index % len(titles)])
+        #             print "Feature {} is irrelevant.".format(titles[col_index % len(titles)])
+
+        # common = Counter(irr).most_common()
+        # print len(common), common
+
+        models = [
+                    # linear_model.LinearRegression(),
+                    # linear_model.Lasso(alpha=0.1),
+                    # linear_model.Ridge(alpha = 0.1, max_iter = None, tol = 0.00001),
+                    linear_model.LogisticRegression(),
+                    # svm.SVC(kernel = 'linear'),
+                    # svm.SVC(kernel = 'rbf'),
+                    RandomForestClassifier(n_estimators = 100, n_jobs = 1)
+                    ]
 
         for model in models:
-            scores = cross_val_score(model, X, y, cv = 10, n_jobs = 6)
+            scores = cross_val_score(model, X, y, cv = 10, n_jobs = 7)
             print type(model), np.average(scores)
 
     if args.task == 6: # Group by
@@ -70,26 +78,41 @@ if __name__ == "__main__":
 
     if args.task == 4: # Cluster long lat into cluster for each point
         from kmean import kmean_utils
-        data = load_raw_data()
+        data = load_raw_data(keep_cols = True)
 
         # Load means
         with open('kmean/kmean_detailed_results.pickle', 'r') as f:
             detailed_results = pickle.load(f)
-            chosen_cluster_count = 11
+            chosen_cluster_count = 30
 
             means = detailed_results[chosen_cluster_count][1]
 
+        current_bird = None
+        current_clusters = []
+        lens = []
+
         ys = []
         for row_index, row in enumerate(data):
-            longitude, latitude = row[1], row[2]
+            longitude, latitude = row[3], row[4]
             mean_index, d = kmean_utils.closest_mean(longitude, latitude, means)
 
             ys.append((row_index, mean_index))
 
+            bird = row[29]
+            if bird == current_bird:
+                current_clusters.append(mean_index)
+            else:
+                lens.append(len(set(current_clusters)))
+                print Counter(current_clusters).most_common()
+
+                current_clusters = [mean_index]
+                current_bird = bird
+
+        print np.average(lens)
         print Counter([y[1] for y in ys])
-        with open('data/y_%s.csv' % chosen_cluster_count, 'w')  as f:
-            writer = csv.writer(f, delimiter = ',')
-            writer.writerows(ys)
+        # with open('data/y_%s.csv' % chosen_cluster_count, 'w')  as f:
+        #     writer = csv.writer(f, delimiter = ',')
+        #     writer.writerows(ys)
 
 
     if args.task == 3: # Test of printing metadata

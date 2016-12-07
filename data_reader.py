@@ -1,5 +1,6 @@
 #!/usr/bin/python2
 
+import argparse
 import csv
 import datetime
 import math
@@ -14,6 +15,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 import numpy as np
+from sklearn import utils as sklearn_utils
 import metadata
 from utils import geo
 
@@ -252,11 +254,11 @@ def filter_irrelevant_data(data, the_metadata, col_titles):
             removing_indices.add(index)
 
     # Manual filtering
-    removing_indices.add(0)  # ID
-    removing_indices.add(10) # Repeated long
-    removing_indices.add(13) # Repeated lat
-    removing_indices.add(22) # argos:sensor-4
-    removing_indices.add(28) # Identifier
+    removing_indices.add(col_titles.index('event-id'))
+    removing_indices.add(col_titles.index('argos:lat1')) # Repeated long
+    removing_indices.add(col_titles.index('argos:lon1')) # Repeated lat
+    removing_indices.add(col_titles.index('argos:sensor-4'))
+    removing_indices.add(col_titles.index('tag-local-identifier')) # Identifier
 
     # Now proceed to remove columns
     # Remove the last index first to preserve index for next removal if need be
@@ -282,7 +284,7 @@ def transform_data(data, the_metadata, col_titles):
     replacing_index = col_titles.index('timestamp')
 
     del new_titles[replacing_index]
-    new_titles.insert(replacing_index, 'Week since beginning')
+    new_titles.insert(replacing_index, 'Group by qtt since beginning')
     new_titles.insert(replacing_index, 'Month')
 
     # Secondly convert long lat to x y z
@@ -299,10 +301,10 @@ def transform_data(data, the_metadata, col_titles):
         current_date = row[replacing_index]
         month = current_date.month
         # month_since_beginning = (current_date.year - base_date.year) * 12 + current_date.month - base_date.month
-        weeks_since_beginning = (current_date - base_date).days / 7
+        time_since_beginning = (current_date - base_date).days / 4
 
         del row[replacing_index]
-        row.insert(replacing_index, weeks_since_beginning)
+        row.insert(replacing_index, time_since_beginning)
         row.insert(replacing_index, month)
 
         x, y, z = geo.to_3d_representation(row[2], row[3])
@@ -329,29 +331,27 @@ def transform_data(data, the_metadata, col_titles):
 def normalize(data, cols):
     # If cols = -1 then do all cols
     #uniform normlzn btwn 0,1: x = (x - min)/ (max - min)
+
     if (cols == -1): cols = xrange(len(data[0]))
 
-    temp = [[row[col] for col in cols] for row in data]
-    npdata = np.array(temp, dtype = float)
+    for i in cols:
+        minn = np.min(data[:,i])
+        maxx = np.max(data[:,i])
 
-    for i in xrange(len(cols)):
-        min = np.min(npdata[:,i])
-        max = np.max(npdata[:,i])
-        for j in range(len(data)):
-            if (max-min != 0):
-                #print(max,min)
-                npdata[j][i] = (npdata[j][i] - min) / float(max-min)
-    return npdata
+        data[:,i] -= minn
+        data[:,i] /= float(maxx - minn)
+
+    return data
 
 def group_by_time_period(data, col_titles, y = None):
     """
-        For now group by column Week since beginning
+        For now group by column 'Group by qtt' since beginning
     """
     current_individual = 0
     current_month = 0
 
     id_index = col_titles.index('individual-local-identifier')
-    month_index = col_titles.index('Week since beginning')
+    month_index = col_titles.index('Group by qtt since beginning')
 
     untouched_columns = ['individual-local-identifier']
     untouched_column_indices = [col_titles.index(col) for col in untouched_columns]
@@ -406,3 +406,41 @@ def load_y(file_name = 'data/y_11.csv'):
         reader = csv.reader(f, delimiter = ',')
         data = [int(row[1]) for row in reader] # Column 0 is the index, which we don't care
         return data
+
+def load_and_preprocess(y_data_file = 'data/y_11.csv'):
+    data, new_metadata, new_titles = load_aggregate_data()
+    data, new_titles = transform_data(data, new_metadata, new_titles)
+
+    y = load_y(y_data_file)
+
+    original_len = len(y)
+    data, y = group_by_time_period(data, new_titles, y)
+    print "Grouped from {} down to {} rows.".format(original_len, len(y))
+
+    # with open('data/test1.csv', 'w') as f:
+    #     writer = csv.writer(f, delimiter = ',')
+    #     writer.writerow(new_titles)
+    #     writer.writerows(data)
+
+    data = np.array(data)
+    y_data = np.array(y)
+
+    group_by_feature_index = new_titles.index('Group by qtt since beginning')
+    max_group_by_feature_value = int(np.max(data[:, group_by_feature_index]))
+
+    import serialize
+    serialized_data = serialize.serialize(data, y_data, new_titles.index('individual-local-identifier'), group_by_feature_index, max_group_by_feature_value)
+    X, y = serialize.flatten_chunk(serialized_data, new_titles, time_period = 3)
+    X = normalize(X, -1)
+
+    # count = 0
+    # for i, value in enumerate(y[:-1]):
+    #     if value == y[i +1]:
+    #         count += 1
+
+    # print float(count) / len(y)
+
+    print y[0]
+    sklearn_utils.shuffle(X, y)
+
+    return X, y, new_titles

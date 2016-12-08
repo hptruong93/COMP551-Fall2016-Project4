@@ -49,10 +49,10 @@ def flatten_chunk(birds, titles, time_period = 3):
         for i in xrange(len(bird.chunks) - (time_period + 1)):
             try:
                 new_row = np.hstack([bird.chunks[i + j].x for j in xrange(time_period)])
-                y.append(bird.chunks[i + (time_period + 1)].y)
-                # y.append((bird.chunks[i + (time_period + 1)].x[x_index],
-                #             bird.chunks[i + (time_period + 1)].x[y_index],
-                #             bird.chunks[i + (time_period + 1)].x[z_index]))
+                # y.append(bird.chunks[i + (time_period + 1)].y)
+                y.append((bird.chunks[i + (time_period + 1)].x[x_index],
+                            bird.chunks[i + (time_period + 1)].x[y_index],
+                            bird.chunks[i + (time_period + 1)].x[z_index]))
 
                 output_x.append(new_row)
             except:

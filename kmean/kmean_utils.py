@@ -1,7 +1,4 @@
-from multiprocessing import Pool
 from utils import geo
-
-p = Pool(7)
 
 def closest_mean(longitude, latitude, means):
 	smallest = 99999999999

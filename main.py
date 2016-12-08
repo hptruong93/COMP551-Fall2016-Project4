@@ -146,12 +146,12 @@ if __name__ == "__main__":
 
     if args.task == 4.5: # Cluster visualization
         from kmean import kmean_utils
-        data = load_raw_data()
+        data = load_raw_data(keep_cols = True)
 
         # Load means
         with open('kmean/kmean_detailed_results.pickle', 'r') as f:
             detailed_results = pickle.load(f)
-            chosen_cluster_count = 11
+            chosen_cluster_count = 15
 
             means = detailed_results[chosen_cluster_count][1]
 
@@ -178,7 +178,7 @@ if __name__ == "__main__":
         # Load means
         with open('kmean/kmean_detailed_results.pickle', 'r') as f:
             detailed_results = pickle.load(f)
-            chosen_cluster_count = 30
+            chosen_cluster_count = 20
 
             means = detailed_results[chosen_cluster_count][1]
 
@@ -198,16 +198,17 @@ if __name__ == "__main__":
                 current_clusters.append(mean_index)
             else:
                 lens.append(len(set(current_clusters)))
-                print Counter(current_clusters).most_common()
+                # print Counter(current_clusters).most_common()
 
                 current_clusters = [mean_index]
                 current_bird = bird
 
-        print np.average(lens)
+        print "Average clusters per bird {}".format(np.average(lens))
         print Counter([y[1] for y in ys])
-        # with open('data/y_%s.csv' % chosen_cluster_count, 'w')  as f:
-        #     writer = csv.writer(f, delimiter = ',')
-        #     writer.writerows(ys)
+
+        with open('data/y_%s.csv' % chosen_cluster_count, 'w')  as f:
+            writer = csv.writer(f, delimiter = ',')
+            writer.writerows(ys)
 
 
     if args.task == 3: # Test of printing metadata

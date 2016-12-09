@@ -1,0 +1,179 @@
+\documentclass[10pt,conference]{IEEEtran}
+
+\usepackage[T1]{fontenc} % optional
+\usepackage{amsmath}
+\usepackage[cmintegrals]{newtxmath}
+\usepackage{bm} 
+\usepackage[english]{babel}
+\usepackage{blindtext}
+\usepackage{array}
+\usepackage{url}
+\usepackage{graphicx}
+\usepackage{tabularx}
+\graphicspath{ {plots/} }
+\usepackage{subcaption}
+\usepackage[backend=bibtex, style=numeric-comp]{biblatex}
+
+\newcommand\Mark[1]{\textsuperscript#1}
+\bibliography{references}{}
+
+\begin{document}
+
+\title{\textbf{Common Eider Migration Pattern} \\
+	\Large COMP 551: Applied Machine Learning \\
+	A bigger title perhaps?
+}
+ 
+\author{
+	\textbf{Corbin Hopper}\\corbin.hopper@mail.mcgill.ca\\260577638
+	\and \textbf{Yue Xia}\\yue.xia@mail.mcgill.ca\\260556275
+	\and \textbf{Hoai Phuoc Truong}\\phuoc.truong2@mail.mcgill.ca\\260526454
+}
+
+\maketitle
+ 
+\section{Introduction}
+    Protecting species involves preserving the habitat they live in.  For birds, conservation must consider both where they currently reside and where they will be in the near future.  Machine learning can leverage publically available datasets with minimal cost and intervention.  Tracking data of common eiders, collected by MoveBank, is used to predict the the eider's future location.  Past movements are combined with environmental factors to form robust models of eider movement.  Models are trained on a classification and a regression task.  In the former data is first clustered into a discrete set of locations, whereas the later groups data by time intervals instead.  [brief summary of results and explanation of why]
+
+\section{Related works}
+    Tracking and identifying animal movement is costly and often harms the animals themselves [cite: harm birds].  Machine learning is capable of assessing animal movements without nonstop use of geolocators.  Tracking data provides a wide variety of possible problems.  Most works adopt a behaviorist paradigm by classifying animal behavior in order to better understand them [cite: ML behavior].  Other approaches use semi-supervised learning to label animal movement [cite: ML semisup].  In contrast to the last two, our approach focuses on predicting future animal movement.  Conservation necessitates management of human activity in relation to animal activity and so requires a robust understanding of animal movement.  Moreover, an understanding of the features that drive animal movement will be vital to understanding how their movement changes over time, in particular in response to our rapidly changing environment.  
+
+\section{Data set}
+    The models were built around extended population of common eiders residing in Alaska, far eastern Russia, and small pieces of Northern Canada.  Common eiders are migratory seabirds with close kinship ties.  Migration occurs in flocks and females can even care for one another's young [cite: kin care].  Common eiders feed on mussels and other small sea organisms.  As a result they are highly affected by overfishing, and multiple studies have linked extensive fishing to rapid decline in eider populations [cite: overfishing].  If eider movement can be predicted  be preemtively restrained prior to eider arrival.
+
+    The data set consists of 110 common eiders, each with 300 to 700 measurements taken within a year for each individual. Each measurement records the longitude and latitude of the common eider at a time stamp. We have also collected the environmental data at that time and position, which includes sunshine duration, visibility, sea surface roughness, wind velocity, air pressure, atmospheric water, snow ica and soil temperature, distance to the coast, runoff and soil water.
+    
+    
+\section{Target prediction tasks}
+\subsection{Predicting exact location}
+    Our first approach to forming a task is predicting the exact location (i.e. longitude and latitude) of a bird given its positions in the previous few time periods. The duration of the time period will be 4 days, 7 days (1 week) and 30 days (1 month). For each duration listed, we consider three continuous time periods and predict the position of the bird in the fourth one. The choice of the durations were based on the amount of possible samples obtained at the end of the grouping process. In particular, choosing to group our data for every 4 days, 7 days and 30 days gave the most amount of continuous time periods that can be used for training the models. We consider all features provided by combining features from the original data set and the obtained environmental data. for all three time periods in our prediction model. The performance of the prediction model will be measured by calculating the Coefficient of Determination ($R^2$ score). Acknowledging that the prediction results will be in its 3D representations ($x$, $y$, and $z$), the $R^2$ score will be calculated in such representation, as opposed to the longitude - latitude representation. The conversion between the two coordinate systems will be discussed in the data pipeline section below.
+\subsection{Predicting by clusters}
+    Another approach we chose to explore is to first, identify clusters using the positions of the birds, then predict the cluster which the birds will be in given its positions in the past. 
+
+\section{Data pipeline}
+    Longitude and latitude is a geographic coordinate system to effectively identify a location on Earth's surface. In this project, we assume Earth to be a perfect sphere and convert any given longitude and latitude to its 3D representation ($x$, $y$, and $z$) using the following transformation after converting longitude and latitude to radians (ignoring the radius of Earth since it is constant):
+    \begin{align}
+    \begin{cases}
+        x = cos(latitude) * cos(longitude) \\
+        y = cos(latitude) * sin(longitude) \\
+        z = sin(latitude)
+    \end{cases}
+    \end{align}
+
+    Our data pipeline is described in the following figure:
+    \begin{figure}[h!]
+      \centering
+        \includegraphics[width=7.644cm, height=2cm]{data_pipeline} 
+      \caption{General data pipeline}
+      \label{fig:data_pipeline}
+    \end{figure}
+    
+    \begin{enumerate}
+        \item \textbf{Feature aggregation}: aggregating features from original data set and the obtained ENV data.
+        \item \textbf{Feature selection}: manual selection of relevant features. In this step, we investigate the meta data of each feature and eliminate features which have any of the following traits: missing more than 80\% of the data (value is $nan$), float columns which have under 50 distinct values (out of 65556 samples), specific human friendly (but not very useful) features (e.g. bird name), and repeated columns (ENV data contains columns that repeat the information in the original data set under a different name).
+        \item \textbf{Feature construction}: convert longitudes and latitudes to their 3D representation using the formulae provided in the beginning of this section.
+        \item \textbf{Time period grouping}: using the timestamp provided in each row, group rows that are in the same time period (e.g. if period is 7 days then combine all rows that are in the same week since the beginning of the study together). This shrinks our input data set depending on the chosen duration of the time period. In particular, grouping by 4 days, 7 days and 30 days result in $7259$, $4744$, and $1316$ combined rows respectively.
+        \item \textbf{Time series construction}: construct a time series of 3 continuous time periods (e.g. if one period is 4 days then construct a series whose length is 12 days) by concatenating their feature columns respectively.
+        \item \textbf{Column normalization}: normalize feature columns using rescaling ($X' = \frac{x - min}{max - min}$). We chose this over standardization ($X' = \frac{X - \mu}{\sigma}$) because most observed features do not have a Gaussian distribution.
+        \item \textbf{Prediction model}: different machine learning models to predict the location of the bird. These models will be discussed in details in the algorithm selection section of the report.
+        \item \textbf{Result visualization}: in addition to evaluating the performance of the model based on conventional metrics (e.g. $R^2$ score, $0-1$ accuracy), we visualize the prediction on the world map to better understand the obtained results.
+    \end{enumerate}
+    
+\subsection{Predicting exact location}
+    For the task of predicting the exact location of the birds, our output are sets of $x$, $y$, and $z$ coordinates and therefore in our \textbf{result visualization} step, we need to convert these back to longitudes and latitudes to plot them on a map.
+\subsection{Predicting by clusters}
+    For the task of predicting the cluster in which the birds will be in, before beginning to feed our raw data into the pipeline, we need to perform clustering algorithm to identify clusters of positions from the data set, then assign each position to a cluster.
+
+\section{Algorithm Selection and Implementation}
+\subsection{Predicting exact location}
+\subsubsection{Linear models}
+\paragraph{Linear Regression}
+\paragraph{Lasso Regression}
+\paragraph{Ridge Regression}
+    Picanha boudin flank leberkas corned beef kielbasa 
+    
+\subsubsection{RNN}
+We were tasked with building a standard recurrent neural network to correctly predict the next position of a common eider. Multiple series of positions along with the normalized environmental measurements at the corresponding positions are fed into the recurrent neural network. Each position is represented by $x$, $y$, and $z$ coordinates transformed from longitudes and latitudes. While the outputs are only series of positions, in $x$, $y$, $z$ representation.
+
+In terms of preliminary design decisions, we chose to have all the hidden nodes inter-connected and we elected hyperbolic tangent sigmoid activated hidden nodes for our the network, while the output unit applies a linear function on the results of hidden nodes.
+At initialization all the weights and biases feeding into each neurons are normalized according to uniform distributions, between 0 and 1. 
+We set our loss to be optimized in the networks training as the sum of squares cost function which represents the squared distances between two points in 3-D.
+The model is trained by stochastic gradient descent with an adapted learning rate initialized at $0.0001$ and halved when the testing error increases, and the error is measured every 5 gradient descend steps. Finally, to prevent over-training, the model is tested on a validation set every 5 gradient descend steps,the training stops if the validation accuracy keeps decreasing for 3 consecutive evaluations.
+
+The hyper-parameter left to determine is the number of hidden units. Models with 10, 25, 50 and 100 hidden units are trained with the grouping by month data and 200 epoches are run. The results show that 25 neurons give the best testing accuracy as shown in (Table I). Since training takes very long time, we fixed the number of hidden units at 25 for grouping by any time period without performing separate tests.
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |c|c c c c| } 
+ \hline
+ number of hidden units & 10 & 25 & 50 & 100\\ 
+ \hline
+ testing accuracy & 0.0116 & 0.0084 & 0.0098 & 0.0110\\ 
+ \hline
+\end{tabular}
+\end{center}
+\caption{errors in predicting exact positions with RNN}
+\label{table:1}
+\end{table}
+\subsection{Predicting by clusters}
+\subsubsection{Ant colony}
+\subsubsection{Logistic Regression}
+    Bresaola pork andouille pork loin, fatback 
+\subsubsection{SVM with linear kernel}
+\subsubsection{Random forest}
+\subsubsection{RNN}
+In the classification task, the positions in both inputs and outputs are represented by 1-hot encodings of the cluster numbers. The structure for recurrent neural network for predicting clusters are similar to that for exact position. Except that the dimensions of all parameters are changed to fit the inputs and outputs. Another change is that the cross entropy loss is used as the loss function as we have a classification task.
+
+In terms of hyper-parameters, a higher initial learning rate of $0.005$ would ensure convergence. Since the training is much faster as observed, we are allowed to try different number of hidden units for all the tasks.
+
+\section{Results and Analysis}
+\subsection{Predicting exact location}
+\subsubsection{RNN}
+90 percent of the examples are used for training, the model is tested on the rest of the data set. The results are as follows:
+\begin{table}[h!]
+\begin{center}
+\begin{tabular}{ |p{1.5cm} | p{1cm} p{1cm} p{1cm} p{2.5cm}| } 
+ \hline
+  grouping by &training error & testing error & $R^2$ score & average distance to real positions\\ 
+ \hline
+  month&0.0032 & 0.0043 & 0.559 & 366 (km)\\ 
+  week&0.0013 & 0.0011 & 0.833 & 188 (km)\\ 
+  4 days&0.0011 & 0.0009 & 0.861 & 165 (km)\\ 
+ \hline
+\end{tabular}
+\end{center}
+\caption{errors in predicting exact positions with RNN}
+\label{table:2}
+\end{table}
+
+
+\subsection{Predicting by clusters}
+    Short ribs pork cow pork chop pork belly t-bone. 
+
+\section{Discussion}
+	Collaboratively administrate empowered markets via
+
+	
+%========================
+% Statement of Contributions
+%========================
+\section{Statement of Contributions}
+
+    
+ 
+%========================
+% References
+%========================
+
+for now just urls:
+overfishing: http://www.rug.nl/research/portal/files/6666977/2002BiolConservCamphuysen.pdf
+            http://jncc.defra.gov.uk/PDF/pub07_waterbirds_part6.1.6.pdf
+harms birds: https://www.theguardian.com/environment/2011/sep/20/tracking-equipment-birds-health
+ML behav: http://www.hhmi.org/research/automatic-tracking-and-behavior-analysis-model-organisms
+            http://www.jstor.org/stable/30243982?seq=1#page_scan_tab_contents
+            http://www.annualreviews.org/doi/pdf/10.1146/annurev-neuro-070815-013845
+ML semisup: https://smartsite.ucdavis.edu/access/content/user/00003578/Publications/Joshi_Schank2003.pdf#page=55
+kin care: http://beheco.oxfordjournals.org/content/17/4/614.full.pdf
+
+FOR DISCUSSION RAND FORESTS GOOD, NN LESS SO FOR ECO DATA: https://www.researchgate.net/profile/Sophie_Calme/publication/220109984_Classification_in_conservation_biology_A_comparison_of_five_machine-learning_methods/links/0912f50a41353c1c30000000.pdf
+
+\end{document}

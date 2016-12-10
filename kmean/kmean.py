@@ -5,7 +5,7 @@ import pickle
 import matplotlib.pyplot as plt
 
 import imp
-data_reader = imp.load_source('data_reader', '../data_reader.py')
+data_reader = imp.load_source('data_reader', './data_reader.py')
 
 from sklearn.cluster import KMeans
 
@@ -86,7 +86,8 @@ def plot_reduction_factor(detailed_results):
         reduction_factor = detailed_results[k][0]
         ys.append(100 if reduction_factor == 'unknown' else reduction_factor)
 
-    data_reader.simple_x_y_plot(xs, ys, title = 'Reduction factor in percent against min.')
+    data_reader.simple_x_y_plot(xs, ys, title = 'Reduction factor in percent against number of means.',
+                                    ytitle = 'Percentage error reduced compared to previous value k-1', xtitle = 'Number of clusters k')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = 'Kmean')

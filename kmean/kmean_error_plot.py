@@ -11,7 +11,7 @@ def plot_kmean_error(results):
 
 if __name__ == "__main__":
 	results = []
-	with open('kmean_result.csv', 'r') as f:
+	with open('../kmean_result.csv', 'r') as f:
 		reader = csv.reader(f, delimiter = ',')
 		for row in reader:
 			results.append(row)

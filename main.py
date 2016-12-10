@@ -22,10 +22,38 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--task', dest = 'task', default = 0, help = 'Choose which task to run', type = float)
     args = parser.parse_args()
 
+    if args.task == 9: # Draw RNN prediction result
+        import draw_map
+
+        with open('data/rnn_predicted_month.pickle', 'r') as f:
+            prediction = pickle.load(f)
+            prediction = [geo.to_long_lat(*element) for row in prediction for element in row]
+
+            longs_prediction = [row[0] for row in prediction]
+            lats_prediction = [row[1] for row in prediction]
+
+        with open('data/rnn_real_month.pickle', 'r') as f:
+            actual = pickle.load(f)
+            actual = [geo.to_long_lat(*element) for row in actual for element in row]
+
+            longs_actual = [row[0] for row in actual]
+            lats_actual = [row[1] for row in actual]
+
+
+        zs = [geo.globe_distance((lats_prediction[i], longs_prediction[i]), (lats_actual[i], longs_actual[i])) for i in xrange(len(prediction))]
+
+        print zs[0]
+        print "Mean and median of errors {} {}".format(np.mean(zs), np.median(zs))
+        # zs = [min(z, 150) for z in zs] # Cap the error
+
+        draw_map.plot(lats_actual, longs_actual, z = zs, title = 'Prediction errors per point for {}'.format('RNN'), z_title = 'Prediction error for the point (km)')
+        # draw_map.plot_paired_paths(lats_prediction, longs_prediction, lats_actual, longs_actual)
+
+
     if args.task == 8.5: # Plot the REGRESSION result in pairs
         import draw_map
 
-        names = ['Ridge']
+        names = ['Lasso']
         for name in names:
             with open('data/{}_result.csv'.format(name), 'r') as f:
                 reader = csv.reader(f, delimiter = ',')
@@ -37,7 +65,13 @@ if __name__ == "__main__":
                 lats_actual = [float(row[3]) for row in data]
 
             zs = [geo.globe_distance((lats_prediction[i], longs_prediction[i]), (lats_actual[i], longs_actual[i])) for i in xrange(len(data))]
+
+            print zs[0]
+            print "Mean and median of errors {} {}".format(np.mean(zs), np.median(zs))
+            zs = [min(z, 300) for z in zs] # Cap the error
+
             draw_map.plot(lats_actual, longs_actual, z = zs, title = 'Prediction errors per point for {}'.format(name), z_title = 'Prediction error for the point (km)')
+            # draw_map.plot_paired_paths(lats_prediction, longs_prediction, lats_actual, longs_actual)
 
 
     if args.task == 8: # Plot the REGRESSION result
@@ -66,18 +100,20 @@ if __name__ == "__main__":
 
         print "Identified {} data samples. Test size is {}.".format(X_train.shape, X_test.shape)
 
-        # model = linear_model.Lasso(alpha=0.1)
+        # model = linear_model.Lasso(alpha=0.0001, max_iter = 2000)
+        # model = linear_model.Lasso(alpha= 0.00001, max_iter = 2000)
         # model.fit(X, y)
         # print "Scores are {}".format(model.score(X, y))
 
         # c = model.coef_
+        # print titles
         # irr = []
 
         # for row_index, row in enumerate(c):
         #     print "Starting with cluster {}".format(row_index)
 
         #     for col_index, val in enumerate(row):
-        #         if abs(val) < 1:
+        #         if abs(val) < 0.0001:
         #             irr.append(titles[col_index % len(titles)])
         #             print "Feature {} is irrelevant.".format(titles[col_index % len(titles)])
 
@@ -89,8 +125,8 @@ if __name__ == "__main__":
             return full_name[full_name.index("'") + 1 : full_name.rindex("'")].split('.')[-1]
 
         models = [
-                    linear_model.LinearRegression(),
-                    linear_model.Lasso(alpha=0.1),
+                    # linear_model.LinearRegression(),
+                    # linear_model.Lasso(alpha= 0.00001, max_iter = 2000),
                     linear_model.Ridge(alpha = 0.1, max_iter = None, tol = 0.00001),
                     # linear_model.LogisticRegression(),
                     # svm.SVC(kernel = 'linear'),
@@ -99,11 +135,11 @@ if __name__ == "__main__":
                     ]
 
         for model in models:
-            scores = cross_val_score(model, X, y, cv = 10, n_jobs = 7)
-            print get_model_name(model), np.average(scores)
-
+            train_scores = cross_val_score(model, X_train, y_train, cv = 10, n_jobs = 7)
             model.fit(X_train, y_train)
-            print "Test score is {}".format(model.score(X_test, y_test))
+            test_score = model.score(X_test, y_test)
+
+            print get_model_name(model), np.average(train_scores), test_score
 
             x_index = titles.index('X')
             y_index = titles.index('Y')
@@ -113,6 +149,11 @@ if __name__ == "__main__":
             # longs_lats = [geo.to_long_lat(row[x_index], row[y_index], row[z_index] for row in X_test)]
             ys = [geo.to_long_lat(*row) for row in y_test]
             y_pred = [geo.to_long_lat(*row) for row in prediction]
+
+            ds = [geo.globe_distance((pred[1], pred[0]), (ys[i][1], ys[i][0])) for i, pred in enumerate(y_pred)]
+            print "Mean error (km) is {}".format(np.mean(ds))
+
+            print model.coef_
 
             # Write test result to file
             with open('data/{}_result.csv'.format(get_model_name(model)), 'w') as f:

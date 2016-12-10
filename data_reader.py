@@ -166,7 +166,7 @@ def to_cluster(event):
     return mean_index
 
 
-def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):
+def simple_x_y_plot(xs, ys, zs = None, title = 'No title', xtitle = None, ytitle = None):
     mpl.rcParams['legend.fontsize'] = 10
     fig = plt.figure()
     ax = fig.gca()
@@ -175,6 +175,11 @@ def simple_x_y_plot(xs, ys, zs = None, title = 'No title'):
         ax.plot(xs, ys, zs,'o-')
     else:
         ax.plot(xs, ys, 'o-')
+
+    if xtitle:
+        plt.xlabel(xtitle)
+    if ytitle:
+        plt.ylabel(ytitle)
 
     plt.title(title)
     plt.show()
@@ -301,7 +306,7 @@ def transform_data(data, the_metadata, col_titles):
         current_date = row[replacing_index]
         month = current_date.month
         # month_since_beginning = (current_date.year - base_date.year) * 12 + current_date.month - base_date.month
-        time_since_beginning = (current_date - base_date).days / 4
+        time_since_beginning = (current_date - base_date).days / 30
 
         del row[replacing_index]
         row.insert(replacing_index, time_since_beginning)
